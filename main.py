@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 
@@ -22,11 +23,21 @@ def run():
         page.fill("#password", LOGIN_PASS)
         page.click("#login-button")
 
-        page.wait_for_selector("#dashboard")
+        page.wait_for_selector(".framework-header-selector-button")
+        page.click(".framework-header-selector-button")
 
-        print("Logged in successfully")
+        page.wait_for_selector(".component-selector-model-input")
+        division = page.eval_on_selector('select.component-selector-make-input','select => select.options[select.selectedIndex].textContent')
+        division_list = ['Toyota', 'Honda', 'Audi', 'BMW']
+        models = page.eval_on_selector_all(".component-selector-model-input option", "options => options.slice(1).map(option=> option.textContent)")
+        for model in models:
+            page.select_option('.component-selector-model-input', label=model)
+        
+            time.sleep(1)
+        print(f"Division: {division} \nModels: {models}")
+        page.pause()
 
-        browser.close()
+        #browser.close()
 
 
 if __name__ == "__main__":
