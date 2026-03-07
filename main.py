@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import time
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
@@ -10,8 +11,28 @@ BASE_URL = os.getenv("BASE_URL")
 LOGIN_USER = os.getenv("LOGIN_USER")
 LOGIN_PASS = os.getenv("LOGIN_PASS")
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
+DB_URL = os.getenv("DB_URL")
 
 
+# Connect to the database
+conn = sqlite3.connect(DB_URL)
+c = conn.cursor()
+
+c.execute("""
+        CREATE TABLE IF NOT EXISTS mdl_dfrt_check(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            model_year INTEGER NOT NULL,
+            division TEXT NOT NULL,
+            model TEXT NOT NULL,
+            model_code TEXT NOT NULL,
+            style_name TEXT NOT NULL,
+            invoice_price REAL NOT NULL,
+            msrp_price REAL NOT NULL,
+            dfrt_price REAL NOT NULL,
+            scrape_date TEXT DEFAULT (datetime('now', 'localtime'))
+        )""")
+
+#main loop
 def run():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=HEADLESS)
@@ -40,11 +61,17 @@ def run():
                 time.sleep(1)
                 table = page.query_selector("table.style-cellTableWidget tbody")
                 rows = table.query_selector_all("tr")
-
-                for row in rows:
-                    cells = row.query_selector_all("td")
-                    row_data = [cell.inner_text().strip() for cell in cells]
-                    data.append(row_data)
+                if each_division == "Toyota":
+                    for row in rows:
+                        cells = row.query_selector_all("td")
+                        if any("(Natl)" in cell.inner_text() for cell in cells):
+                            row_data = [cell.inner_text().strip() for cell in cells]
+                            data.append(row_data)
+                else:
+                    for row in rows:
+                        cells = row.query_selector_all("td")
+                        row_data = [cell.inner_text().strip() for cell in cells]
+                        data.append(row_data)
             
                 time.sleep(1)
                 print(data)
@@ -52,6 +79,8 @@ def run():
         page.pause()
 
         #browser.close()
+        conn.commit()
+        conn.close()
 
 
 if __name__ == "__main__":
