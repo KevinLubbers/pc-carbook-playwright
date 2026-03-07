@@ -2,6 +2,8 @@
 
 A Python tool to scrape car data from a specific website and organize it in a SQLite database for later analysis and comparison.
 
+Runtime of 2m 29s
+
 ## Features
 
 Logs into a website using credentials stored in environment variables.

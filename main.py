@@ -94,10 +94,6 @@ def run():
                         data.append(insert_tuple)
             
                 time.sleep(1)
-                #print(data)
-            #print(f"Division: {division} \nModels: {models}")
-        
-        page.pause()
 
         #insert data into database
         c.executemany(sql, data)
