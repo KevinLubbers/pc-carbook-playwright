@@ -100,7 +100,13 @@ def run():
 
         conn.commit()
         conn.close()
-        #browser.close()
+        #close pop up
+        page.click("img.gwt-Image[src*='close_window.gif']")
+        #logout properly
+        page.click("a.gwt-Anchor:has-text('Log Out')")
+
+        time.sleep(5)
+        browser.close()
 
 
 if __name__ == "__main__":
