@@ -69,12 +69,10 @@ Table: mdl_dfrt_check
 |style_name | TEXT |	Style/trim name |
 |invoice_price | REAL |	Invoice price |
 |msrp_price | REAL |	MSRP price |
-|dfrt_price | REAL |	Dealer-reported price |
+|dfrt_price | REAL |	Delivery price |
 |scrape_date | TEXT |	Timestamp of data scraping |
 
 ### Notes
 The scraper includes special handling for Toyota models to only capture rows labeled (Natl).
-
-The browser pauses at the end for inspection and debugging. Remove page.pause() to fully automate.
 
 Be mindful of the website’s terms of service and scraping limits.

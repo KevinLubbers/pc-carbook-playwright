@@ -1,7 +1,13 @@
 import sqlite3
 import os
+import requests
+from datetime import date, timedelta
 from dotenv import load_dotenv
+
+#load env variables and connect to DB
+load_dotenv()
 DB_URL = os.getenv("DB_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 conn = sqlite3.connect(DB_URL)
 conn.row_factory = sqlite3.Row
@@ -9,11 +15,13 @@ c = conn.cursor()
 
 
 show_month_range_query = """
-    SELECT id, scrape_date
+    SELECT DISTINCT scrape_date
         FROM mdl_dfrt_check
         WHERE scrape_date >= datetime('now', '-30 days')
         ORDER BY scrape_date DESC;
         """
+#added final AND to hide records with no diff
+#remove to show all records 
 compare_query = """
     SELECT
         a.model_year,
@@ -41,37 +49,154 @@ compare_query = """
 
     WHERE date(a.scrape_date) = date(?)
       AND date(b.scrape_date) = date(?)
+      AND (
+        invoice_diff != 0 OR
+        msrp_diff != 0 OR
+        dfrt_diff != 0
+      )
 
     ORDER BY a.division, a.model, a.style_name
     """
+#creates a nicely formatted table of results with headers and column widths
+def print_sql_table(cursor, max_width=40):
+    returnText = []
+    rows = cursor.fetchall()
+    if not rows:
+        print("No results.")
+        return
 
+    columns = [desc[0] for desc in cursor.description]
+
+    # Convert rows to lists so we can measure values
+    table = []
+    for row in rows:
+        if isinstance(row, dict) or hasattr(row, "keys"):  # sqlite3.Row
+            table.append([str(row[col]) for col in columns])
+        else:
+            table.append([str(val) for val in row])
+
+    # Determine column widths
+    widths = []
+    for i, col in enumerate(columns):
+        max_cell = max(len(r[i]) for r in table)
+        width = min(max(len(col), max_cell), max_width)
+        widths.append(width)
+
+    # Helper for trimming long values
+    def trim(val, w):
+        return val if len(val) <= w else val[:w-3] + "..."
+
+    # Print header
+    header = " | ".join(f"{col:<{widths[i]}}" for i, col in enumerate(columns))
+    print(header)
+    print("-" * len(header))
+    returnText.append(header) 
+    returnText.append("-" * len(header))
+
+    # Print rows
+    for row in table:
+        line = " | ".join(
+            f"{trim(row[i], widths[i]):<{widths[i]}}"
+            for i in range(len(columns))
+        )
+        print(line)
+        returnText.append(line)
+    return "\n".join(returnText)
+#end print_sql_table
+
+
+#start text to HTML conversion
+def text_to_html_table(table_text):
+    lines = table_text.strip().split("\n")
+
+    # First line is header
+    headers = [h.strip() for h in lines[0].split("|")]
+    html = '<table border="1" style="border-collapse: collapse; font-size:12px;">'
+
+    # Header row
+    html += "<tr>"
+    for h in headers:
+        html += f"<th style='padding:4px;background:#f2f2f2'>{h}</th>"
+    html += "</tr>"
+
+    # Data rows (skip separator line)
+    for line in lines[1:]:
+        if set(line.strip()) <= {"-", " "}:
+            continue  # skip the dashed line
+        cells = [c.strip() for c in line.split("|")]
+        html += "<tr>"
+        for c in cells:
+            # Optional: highlight diff columns
+            if "diff" in headers[cells.index(c)].lower():
+                try:
+                    val = float(c)
+                    if val > 0:
+                        html += f"<td style='color:green;font-weight:bold'>{c}</td>"
+                    elif val < 0:
+                        html += f"<td style='color:red;font-weight:bold'>{c}</td>"
+                    else:
+                        html += f"<td>{c}</td>"
+                except:
+                    html += f"<td>{c}</td>"
+            else:
+                html += f"<td>{c}</td>"
+        html += "</tr>"
+
+    html += "</table>"
+    return html
+#end text_to_html
+
+#start input menu
 print("Select run range:")
 print("1) Compare today with yesterday (or most recent day)")
 print("2) Compare today with 7 days ago")
 print("3) Compare today with 30 days ago")
 print("4) Custom date range")
 
+#input menu logic
 while True:
     choice = input("Choice: ")
+    today = date.today()
     match choice:
-        case "1": 
+        case "1":
+            yesterday = today - timedelta(days=1)
+            date1 = yesterday.strftime("%Y-%m-%d")
+            date2 = today.strftime("%Y-%m-%d")
             break
         case "2":
-            date1 = input("Start date (YYYY-MM-DD): ")
-            date2 = input("End date (YYYY-MM-DD): ")
+            seven_days_ago = today - timedelta(days=7)
+            date1 = seven_days_ago.strftime("%Y-%m-%d")
+            date2 = today.strftime("%Y-%m-%d")
             break
         case "3":
-            date1 = input("Start date (YYYY-MM-DD): ")
-            date2 = input("End date (YYYY-MM-DD): ")
+            thirty_days_ago = today - timedelta(days=30)
+            date1 = thirty_days_ago.strftime("%Y-%m-%d")
+            date2 = today.strftime("%Y-%m-%d")
             break
         case "4":
+            c.execute(show_month_range_query)
+            rows = c.fetchall()
+            print("Select any two dates:")
+            for i, row in enumerate(rows, start=1):
+                print(f"{i}) {row['scrape_date']}")
+                      
             date1 = input("Start date (YYYY-MM-DD): ")
             date2 = input("End date (YYYY-MM-DD): ")
             break
         case _:
             print("Please select 1–4.")
 
+#execute and print results
 c.execute(compare_query, (date1, date2))
-rows = c.fetchall()
-
+string_output = print_sql_table(c)
 conn.close()
+
+#convert to HTML
+html_output = text_to_html_table(string_output)
+
+#send results to webhook
+try:
+    data = {"content": f"{html_output}"}
+    requests.post(WEBHOOK_URL, json=data)
+except ValueError as e:
+    print(e)
