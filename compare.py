@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import requests
+import sys
 from datetime import date, timedelta
 from dotenv import load_dotenv
 
@@ -63,7 +64,7 @@ def print_sql_table(cursor, max_width=40):
     rows = cursor.fetchall()
     if not rows:
         print("No results.")
-        return
+        sys.exit(0)
 
     columns = [desc[0] for desc in cursor.description]
 
@@ -195,8 +196,12 @@ conn.close()
 html_output = text_to_html_table(string_output)
 
 #send results to webhook
-try:
-    data = {"content": f"{html_output}"}
-    requests.post(WEBHOOK_URL, json=data)
-except ValueError as e:
-    print(e)
+send = input("Send results to Teams? (y/n): ").strip().lower()
+if send == "y":
+    try:
+        data = {"content": f"{html_output}"}
+        requests.post(WEBHOOK_URL, json=data)
+    except ValueError as e:
+        print(e)
+else:
+    print("Results not sent to Teams.")
