@@ -14,12 +14,23 @@ conn = sqlite3.connect(DB_URL)
 conn.row_factory = sqlite3.Row
 c = conn.cursor()
 
+count_models_query = """
+    SELECT
+    division,
+    COUNT(DISTINCT CASE WHEN DATE(scrape_date) = :date1 THEN model END) AS "Day 1 Model Count",
+    COUNT(DISTINCT CASE WHEN DATE(scrape_date) = :date2 THEN model END) AS "Day 2 Model Count",
+    COUNT(DISTINCT CASE WHEN DATE(scrape_date) = :date1 THEN model END)
+      - COUNT(DISTINCT CASE WHEN DATE(scrape_date) = :date2 THEN model END) AS "Day 1 - Day 2"
+FROM mdl_dfrt_check
+GROUP BY division
+ORDER BY division
+        """
 
 show_month_range_query = """
     SELECT DISTINCT scrape_date
         FROM mdl_dfrt_check
         WHERE scrape_date >= datetime('now', '-30 days')
-        ORDER BY scrape_date DESC;
+        ORDER BY scrape_date DESC
         """
 #added final AND to hide records with no diff
 #remove to show all records 
@@ -188,6 +199,16 @@ while True:
             print("Please select 1–4.")
 
 #execute and print results
+c.execute(count_models_query, (date1, date2))
+count = c.fetchall()
+print(f"{'Day 1 Model Count':<18} | {'Day 2 Model Count':<18} | {'Count Diff':<12} | {'Division':<12}")
+print("-" * 70)
+
+# Print each row
+for row in count:
+    day1_count, day2_count, diff, division = row[1], row[2], row[3], row[0]
+    print(f"{day1_count:<18} | {day2_count:<18} | {diff:<12} | {division:<14}")
+
 c.execute(compare_query, (date1, date2))
 string_output = print_sql_table(c)
 conn.close()
