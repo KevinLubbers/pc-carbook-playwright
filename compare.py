@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 DB_URL = os.getenv("DB_URL")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+NO_UPDATES_WEBHOOK = os.getenv("NO_UPDATES_WEBHOOK")
 
 conn = sqlite3.connect(DB_URL)
 conn.row_factory = sqlite3.Row
@@ -74,8 +75,18 @@ def print_sql_table(cursor, max_width=40):
     returnText = []
     rows = cursor.fetchall()
     if not rows:
-        print("No results.")
+        print("No results found")
+        send = input("Send results to Teams? (y/n): ").strip().lower()
+        if send == "y":
+            try:
+                data = {"name": "PC Carbook | No Updates Found"}
+                requests.post(NO_UPDATES_WEBHOOK, json=data)
+            except ValueError as e:
+                print(e)
+        else:
+            print("Results not sent to Teams")
         sys.exit(0)
+
 
     columns = [desc[0] for desc in cursor.description]
 
@@ -198,22 +209,21 @@ while True:
         case _:
             print("Please select 1–4.")
 
-#execute and print results
-c.execute(count_models_query, (date1, date2))
+#start count and count diff query + display output
+c.execute(count_models_query, {"date1": date1, "date2": date2})
 count = c.fetchall()
 print(f"{'Day 1 Model Count':<18} | {'Day 2 Model Count':<18} | {'Count Diff':<12} | {'Division':<12}")
 print("-" * 70)
-
-# Print each row
 for row in count:
     day1_count, day2_count, diff, division = row[1], row[2], row[3], row[0]
     print(f"{day1_count:<18} | {day2_count:<18} | {diff:<12} | {division:<14}")
 
+#start compare query and text display table creation
 c.execute(compare_query, (date1, date2))
 string_output = print_sql_table(c)
 conn.close()
 
-#convert to HTML
+#convert text table to HTML
 html_output = text_to_html_table(string_output)
 
 #send results to webhook
@@ -225,4 +235,4 @@ if send == "y":
     except ValueError as e:
         print(e)
 else:
-    print("Results not sent to Teams.")
+    print("Results not sent to Teams")
