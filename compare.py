@@ -27,10 +27,36 @@ GROUP BY division
 ORDER BY division
         """
 
+count_models_lag_query = """
+WITH daily_models AS (
+    SELECT
+        division,
+        DATE(scrape_date) AS scrape_day,
+        model_year || '-' || model AS model_id
+    FROM mdl_dfrt_check
+    GROUP BY division, DATE(scrape_date), model_id
+),
+daily_counts AS (
+    SELECT
+        division,
+        scrape_day,
+        COUNT(*) AS model_count
+    FROM daily_models
+    GROUP BY division, scrape_day
+)
+SELECT
+    division,
+    scrape_day,
+    model_count AS "Day Model Count",
+    model_count - LAG(model_count) OVER (PARTITION BY division ORDER BY scrape_day) AS "Day-over-Day Change"
+FROM daily_counts
+ORDER BY division, scrape_day;
+"""
+
 show_month_range_query = """
     SELECT DISTINCT scrape_date
         FROM mdl_dfrt_check
-        WHERE scrape_date >= datetime('now', '-30 days')
+        WHERE scrape_date >= datetime('now', '-100 days')
         ORDER BY scrape_date DESC
         """
 #added final AND to hide records with no diff
@@ -59,6 +85,7 @@ compare_query = """
     JOIN mdl_dfrt_check b
       ON a.model_code = b.model_code
      AND a.style_name = b.style_name
+     AND a.model_year = b.model_year
 
     WHERE date(a.scrape_date) = date(?)
       AND date(b.scrape_date) = date(?)
@@ -70,6 +97,51 @@ compare_query = """
 
     ORDER BY a.division, a.model, a.style_name
     """
+
+optimized_compare_query = """
+WITH old_day AS (
+    SELECT *
+    FROM mdl_dfrt_check
+    WHERE date(scrape_date) = date(?)
+),
+new_day AS (
+    SELECT *
+    FROM mdl_dfrt_check
+    WHERE date(scrape_date) = date(?)
+)
+
+SELECT
+    a.model_year,
+    a.division,
+    a.model,
+    a.model_code,
+    a.style_name,
+
+    a.invoice_price AS invoice_old,
+    b.invoice_price AS invoice_new,
+    (b.invoice_price - a.invoice_price) AS invoice_diff,
+
+    a.msrp_price AS msrp_old,
+    b.msrp_price AS msrp_new,
+    (b.msrp_price - a.msrp_price) AS msrp_diff,
+
+    a.dfrt_price AS dfrt_old,
+    b.dfrt_price AS dfrt_new,
+    (b.dfrt_price - a.dfrt_price) AS dfrt_diff
+
+FROM old_day a
+JOIN new_day b
+  ON a.model_code = b.model_code
+ AND a.style_name = b.style_name
+ AND a.model_year = b.model_year
+
+WHERE
+    (b.invoice_price - a.invoice_price) != 0 OR
+    (b.msrp_price - a.msrp_price) != 0 OR
+    (b.dfrt_price - a.dfrt_price) != 0
+
+ORDER BY a.division, a.model, a.style_name
+"""
 #creates a nicely formatted table of results with headers and column widths
 def print_sql_table(cursor, max_width=40):
     returnText = []
@@ -210,6 +282,20 @@ while True:
             print("Please select 1–4.")
 
 #start count and count diff query + display output
+c.execute(count_models_lag_query)
+rows = c.fetchall()
+
+# Print a header
+print(f"{'Division':<12} | {'Scrape Date':<12} | {'Model Count':<12} | {'Day-over-Day Change':<20}")
+print("-" * 65)
+
+# Print each row
+for row in rows:
+    division, scrape_day, model_count, day_diff = row
+    # Replace None with 0 or '-' for first day
+    day_diff_display = day_diff if day_diff is not None else '-'
+    print(f"{division:<12} | {scrape_day:<12} | {model_count:<12} | {day_diff_display:<20}")
+"""
 c.execute(count_models_query, {"date1": date1, "date2": date2})
 count = c.fetchall()
 print(f"{'Day 1 Model Count':<18} | {'Day 2 Model Count':<18} | {'Count Diff':<12} | {'Division':<12}")
@@ -217,9 +303,9 @@ print("-" * 70)
 for row in count:
     day1_count, day2_count, diff, division = row[1], row[2], row[3], row[0]
     print(f"{day1_count:<18} | {day2_count:<18} | {diff:<12} | {division:<14}")
-
+"""
 #start compare query and text display table creation
-c.execute(compare_query, (date1, date2))
+c.execute(optimized_compare_query, (date1, date2))
 string_output = print_sql_table(c)
 conn.close()
 

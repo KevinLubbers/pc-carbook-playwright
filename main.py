@@ -55,45 +55,52 @@ def run():
 
         #loop through hard-coded division list. no need to scrape all divisions
         division_list = ['Toyota', 'Honda', 'Chevy Cars', 'Chevy Utility Vehicles']
+        year_list = ['2026', '2027']
         data = []
-        for each_division in division_list:
-            page.select_option('.component-selector-make-input', label=each_division)
-            #get text of selected division
-            division = page.eval_on_selector('select.component-selector-make-input','select => select.options[select.selectedIndex].textContent')
-            #get text of selected year 
-            year = page.eval_on_selector('select.component-selector-year-input','select => select.options[select.selectedIndex].textContent')
-            time.sleep(1)
-            page.wait_for_selector(".component-selector-model-input")
-            #get text of all models (except the first one, which is a placeholder)
-            models = page.eval_on_selector_all(".component-selector-model-input option", "options => options.slice(1).map(option=> option.textContent)")
-            #loop through all models found
-            for model in models:
-                page.select_option('.component-selector-model-input', label=model)
+        for each_year in year_list:
+            page.select_option('.component-selector-year-input', label=each_year)
+            time.sleep(2)
+            divisions_of_year = page.locator('.component-selector-make-input option').all_text_contents()
+            for each_division in division_list:
+                if each_division not in divisions_of_year:
+                    continue
+                page.select_option('.component-selector-make-input', label=each_division)
+                #get text of selected division
+                division = page.eval_on_selector('select.component-selector-make-input','select => select.options[select.selectedIndex].textContent')
+                #get text of selected year 
+                year = page.eval_on_selector('select.component-selector-year-input','select => select.options[select.selectedIndex].textContent')
                 time.sleep(1)
-                #get dynamically generated table data after selecting model
-                table = page.query_selector("table.style-cellTableWidget tbody")
-                rows = table.query_selector_all("tr")
-                #only select rows with national pricing for all Toyota models
-                if each_division == "Toyota":
-                    for row in rows:
-                        cells = row.query_selector_all("td")
-                        if any("(Natl)" in cell.inner_text() for cell in cells):
+                page.wait_for_selector(".component-selector-model-input")
+                #get text of all models (except the first one, which is a placeholder)
+                models = page.eval_on_selector_all(".component-selector-model-input option", "options => options.slice(1).map(option=> option.textContent)")
+                #loop through all models found
+                for model in models:
+                    page.select_option('.component-selector-model-input', label=model)
+                    time.sleep(1)
+                    #get dynamically generated table data after selecting model
+                    table = page.query_selector("table.style-cellTableWidget tbody")
+                    rows = table.query_selector_all("tr")
+                    #only select rows with national pricing for all Toyota models
+                    if each_division == "Toyota":
+                        for row in rows:
+                            cells = row.query_selector_all("td")
+                            if any("(Natl)" in cell.inner_text() for cell in cells):
+                                row_data = [cell.inner_text().strip() for cell in cells]
+                                row_data = [x.replace("$", "").replace(",", "") for x in row_data]
+                                #order of query is (year, division, model, model_code, style_name, invoice_price, msrp_price, dfrt_price)
+                                insert_tuple = (year, division, model, row_data[0], row_data[1], float(row_data[2]), float(row_data[3]), float(row_data[4]))
+                                data.append(insert_tuple)
+                    #otherwise, select all rows
+                    else:
+                        for row in rows:
+                            cells = row.query_selector_all("td")
                             row_data = [cell.inner_text().strip() for cell in cells]
                             row_data = [x.replace("$", "").replace(",", "") for x in row_data]
                             #order of query is (year, division, model, model_code, style_name, invoice_price, msrp_price, dfrt_price)
                             insert_tuple = (year, division, model, row_data[0], row_data[1], float(row_data[2]), float(row_data[3]), float(row_data[4]))
                             data.append(insert_tuple)
-                #otherwise, select all rows
-                else:
-                    for row in rows:
-                        cells = row.query_selector_all("td")
-                        row_data = [cell.inner_text().strip() for cell in cells]
-                        row_data = [x.replace("$", "").replace(",", "") for x in row_data]
-                        #order of query is (year, division, model, model_code, style_name, invoice_price, msrp_price, dfrt_price)
-                        insert_tuple = (year, division, model, row_data[0], row_data[1], float(row_data[2]), float(row_data[3]), float(row_data[4]))
-                        data.append(insert_tuple)
-            
-                time.sleep(1)
+                
+                    time.sleep(1)
 
         #insert data into database
         c.executemany(sql, data)
