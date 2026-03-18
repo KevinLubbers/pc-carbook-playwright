@@ -203,10 +203,11 @@ def print_sql_table(cursor, max_width=40):
 #start text to HTML conversion
 def text_to_html_table(table_text):
     lines = table_text.strip().split("\n")
+    html = f"<p>Previous Run Date: {date1}</p><p>Today's Run Date: {date2}</p>"
 
     # First line is header
     headers = [h.strip() for h in lines[0].split("|")]
-    html = '<table border="1" style="border-collapse: collapse; font-size:12px;">'
+    html += '<table border="1" style="border-collapse: collapse; font-size:12px;">'
 
     # Header row
     html += "<tr>"
@@ -282,12 +283,15 @@ while True:
             print("Please select 1–4.")
 
 #start count and count diff query + display output
+lag_query_text = []
 c.execute(count_models_lag_query)
 rows = c.fetchall()
 
 # Print a header
 print(f"{'Division':<12} | {'Scrape Date':<12} | {'Model Count':<12} | {'Day-over-Day Change':<20}")
 print("-" * 65)
+lag_query_text.append(f"{'Division':<12} | {'Scrape Date':<12} | {'Model Count':<12} | {'Day-over-Day Change':<20}")
+lag_query_text.append("-" * 65)
 
 # Print each row
 for row in rows:
@@ -295,6 +299,9 @@ for row in rows:
     # Replace None with 0 or '-' for first day
     day_diff_display = day_diff if day_diff is not None else '-'
     print(f"{division:<12} | {scrape_day:<12} | {model_count:<12} | {day_diff_display:<20}")
+    lag_query_text.append(f"{division:<12} | {scrape_day:<12} | {model_count:<12} | {day_diff_display:<20}")
+
+lag_query_text = "\n".join(lag_query_text)
 """
 c.execute(count_models_query, {"date1": date1, "date2": date2})
 count = c.fetchall()
@@ -311,6 +318,7 @@ conn.close()
 
 #convert text table to HTML
 html_output = text_to_html_table(string_output)
+html_output += text_to_html_table(lag_query_text)
 
 #send results to webhook
 send = input("Send results to Teams? (y/n): ").strip().lower()
