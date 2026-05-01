@@ -10,6 +10,7 @@ load_dotenv()
 DB_URL = os.getenv("DB_URL")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 NO_UPDATES_WEBHOOK = os.getenv("NO_UPDATES_WEBHOOK")
+CHANGE_QUERY_WEBHOOK_URL = os.getenv("CHANGE_QUERY_WEBHOOK_URL")
 
 conn = sqlite3.connect(DB_URL)
 conn.row_factory = sqlite3.Row
@@ -242,6 +243,37 @@ def text_to_html_table(table_text):
     return html
 #end text_to_html
 
+#start rows_only
+def rows_only(table_text):
+    lines = table_text.strip().split("\n")
+    # list to store all rows and be returned
+    html = []
+    # getting headers from first line so I can determine which columns to highlight
+    headers = [h.strip() for h in lines[0].split("|")]
+
+    # Data rows (skip separator line)
+    for line in lines[2:]:
+        html_string = "<tr>"
+        cells = [c.strip() for c in line.split("|")]
+        for c in cells:
+            if "diff" in headers[cells.index(c)].lower():
+                try:
+                    val = float(c)
+                    if val > 0:
+                        html_string += f"<td style='color:green;font-weight:bold'>{c}</td>"
+                    elif val < 0:
+                        html_string += f"<td style='color:red;font-weight:bold'>{c}</td>"
+                    else:
+                        html_string += f"<td>{c}</td>"
+                except:
+                    html_string += f"<td>{c}</td>"
+            else:
+                html_string += f"<td>{c}</td>"
+        html_string += "</tr>"
+        html.append(html_string)
+
+    return html
+
 #start input menu
 print("Select run range:")
 print("1) Compare today with yesterday (or most recent day)")
@@ -317,15 +349,29 @@ string_output = print_sql_table(c)
 conn.close()
 
 #convert text table to HTML
-html_output = text_to_html_table(string_output)
-html_output += text_to_html_table(lag_query_text)
+price_html_output = text_to_html_table(string_output)
+change_html_output = text_to_html_table(lag_query_text)
+
+#new row only function
+price_rows_only = rows_only(string_output)
+#change_rows_only = rows_only(lag_query_text)
 
 #send results to webhook
-send = input("Send results to Teams? (y/n): ").strip().lower()
+send = input("Send price results to Teams? (y/n): ").strip().lower()
 if send == "y":
     try:
-        data = {"content": f"{html_output}"}
+        data = {"content": price_rows_only}
         requests.post(WEBHOOK_URL, json=data)
+    except ValueError as e:
+        print(e)
+else:
+    print("Results not sent to Teams")
+
+send = input("Send change results to Teams? (y/n): ").strip().lower()
+if send == "y":
+    try:
+        data = {"content": f"{change_html_output}"}
+        requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
     except ValueError as e:
         print(e)
 else:

@@ -59,7 +59,7 @@ def run():
         data = []
         for each_year in year_list:
             page.select_option('.component-selector-year-input', label=each_year)
-            time.sleep(2)
+            time.sleep(3)
             divisions_of_year = page.locator('.component-selector-make-input option').all_text_contents()
             for each_division in division_list:
                 if each_division not in divisions_of_year:
@@ -76,7 +76,7 @@ def run():
                 #loop through all models found
                 for model in models:
                     page.select_option('.component-selector-model-input', label=model)
-                    time.sleep(1)
+                    time.sleep(2)
                     #get dynamically generated table data after selecting model
                     table = page.query_selector("table.style-cellTableWidget tbody")
                     rows = table.query_selector_all("tr")
