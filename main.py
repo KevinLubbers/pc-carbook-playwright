@@ -54,7 +54,7 @@ def run():
         page.wait_for_selector(".component-selector-model-input")
 
         #loop through hard-coded division list. no need to scrape all divisions
-        division_list = ['Toyota', 'Honda', 'Chevy Cars', 'Chevy Utility Vehicles']
+        division_list = ['Toyota', 'Honda', 'Chevy Cars', 'Chevy Utility Vehicles', 'Hyundai']
         year_list = ['2026', '2027']
         data = []
         for each_year in year_list:
