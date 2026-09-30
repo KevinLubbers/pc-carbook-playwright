@@ -370,7 +370,7 @@ else:
 send = input("Send change results to Teams? (y/n): ").strip().lower()
 if send == "y":
     try:
-        data = {"content": f"{change_rows_only}"}
+        data = {"content": change_rows_only}
         requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
     except ValueError as e:
         print(e)
