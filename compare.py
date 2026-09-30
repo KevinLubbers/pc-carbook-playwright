@@ -354,7 +354,7 @@ change_html_output = text_to_html_table(lag_query_text)
 
 #new row only function
 price_rows_only = rows_only(string_output)
-#change_rows_only = rows_only(lag_query_text)
+change_rows_only = rows_only(lag_query_text)
 
 #send results to webhook
 send = input("Send price results to Teams? (y/n): ").strip().lower()
@@ -370,7 +370,7 @@ else:
 send = input("Send change results to Teams? (y/n): ").strip().lower()
 if send == "y":
     try:
-        data = {"content": f"{change_html_output}"}
+        data = {"content": f"{change_rows_only}"}
         requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
     except ValueError as e:
         print(e)
