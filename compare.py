@@ -255,10 +255,10 @@ def rows_only(table_text):
     for line in lines[2:]:
         html_string = "<tr>"
         cells = [c.strip() for c in line.split("|")]
-        for c in cells:
-            if "diff" in headers[cells.index(c)].lower():
+        for i, c in enumerate(cells):
+            if "diff" in headers[i].lower():
                 try:
-                    val = float(c)
+                    val = float(c.replace(",", ""))
                     if val > 0:
                         html_string += f"<td style='color:green;font-weight:bold'>{c}</td>"
                     elif val < 0:
