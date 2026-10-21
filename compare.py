@@ -51,14 +51,15 @@ SELECT
     model_count AS "Day Model Count",
     model_count - LAG(model_count) OVER (PARTITION BY division ORDER BY scrape_day) AS "Day-over-Day Change"
 FROM daily_counts
+WHERE scrape_day >= DATE('now', '-50 days')
 ORDER BY division, scrape_day;
 """
 
 show_month_range_query = """
     SELECT DISTINCT scrape_date
         FROM mdl_dfrt_check
-        WHERE scrape_date >= datetime('now', '-100 days')
-        ORDER BY scrape_date DESC
+        WHERE scrape_date >= datetime('now', '-50 days')
+        ORDER BY scrape_date ASC
         """
 #added final AND to hide records with no diff
 #remove to show all records 
