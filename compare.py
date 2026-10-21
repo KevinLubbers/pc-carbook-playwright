@@ -363,17 +363,19 @@ if send == "y":
     try:
         data = {"content": price_rows_only}
         requests.post(WEBHOOK_URL, json=data)
-    except ValueError as e:
+    except requests.exceptions.RequestException as e:
         print(e)
 else:
     print("Results not sent to Teams")
+
+print("First request complete...")
 
 send = input("Send change results to Teams? (y/n): ").strip().lower()
 if send == "y":
     try:
         data = {"content": change_rows_only}
         requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
-    except ValueError as e:
+    except requests.exceptions.RequestException as e:
         print(e)
 else:
     print("Results not sent to Teams")
