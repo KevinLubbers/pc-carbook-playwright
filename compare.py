@@ -360,22 +360,16 @@ change_rows_only = rows_only(lag_query_text)
 #send results to webhook
 send = input("Send price results to Teams? (y/n): ").strip().lower()
 if send == "y":
-    try:
-        data = {"content": price_rows_only}
-        requests.post(WEBHOOK_URL, json=data)
-    except requests.exceptions.RequestException as e:
-        print(e)
+    data = {"content": price_rows_only}
+    requests.post(WEBHOOK_URL, json=data)
 else:
     print("Results not sent to Teams")
 
 print("First request complete...")
 
-send = input("Send change results to Teams? (y/n): ").strip().lower()
-if send == "y":
-    try:
-        data = {"content": change_rows_only}
-        requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
-    except requests.exceptions.RequestException as e:
-        print(e)
+change_send = input("Send change results to Teams? (y/n): ").strip().lower()
+if change_send == "y":
+    data = {"content": change_rows_only}
+    requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
 else:
     print("Results not sent to Teams")
