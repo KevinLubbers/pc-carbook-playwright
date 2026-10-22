@@ -159,7 +159,7 @@ def print_sql_table(cursor, max_width=40):
                 print(e)
         else:
             print("Results not sent to Teams")
-        sys.exit(0)
+        return ""
 
 
     columns = [desc[0] for desc in cursor.description]
@@ -335,38 +335,30 @@ for row in rows:
     lag_query_text.append(f"{division:<12} | {scrape_day:<12} | {model_count:<12} | {day_diff_display:<20}")
 
 lag_query_text = "\n".join(lag_query_text)
-"""
-c.execute(count_models_query, {"date1": date1, "date2": date2})
-count = c.fetchall()
-print(f"{'Day 1 Model Count':<18} | {'Day 2 Model Count':<18} | {'Count Diff':<12} | {'Division':<12}")
-print("-" * 70)
-for row in count:
-    day1_count, day2_count, diff, division = row[1], row[2], row[3], row[0]
-    print(f"{day1_count:<18} | {day2_count:<18} | {diff:<12} | {division:<14}")
-"""
+
 #start compare query and text display table creation
 c.execute(optimized_compare_query, (date1, date2))
 string_output = print_sql_table(c)
 conn.close()
 
-#convert text table to HTML
-price_html_output = text_to_html_table(string_output)
-change_html_output = text_to_html_table(lag_query_text)
+#if no pricing change results, a different message is sent
+if string_output != "":
+    price_html_output = text_to_html_table(string_output)
+    price_rows_only = rows_only(string_output)
+    #send results to webhook
+    send = input("Send price results to Teams? (y/n): ").strip().lower()
+    if send == "y":
+        data = {"content": price_rows_only}
+        requests.post(WEBHOOK_URL, json=data)
+    else:
+        print("Results not sent to Teams")
 
+#convert text table to HTML
+change_html_output = text_to_html_table(lag_query_text)
 #new row only function
-price_rows_only = rows_only(string_output)
 change_rows_only = rows_only(lag_query_text)
 
-#send results to webhook
-send = input("Send price results to Teams? (y/n): ").strip().lower()
-if send == "y":
-    data = {"content": price_rows_only}
-    requests.post(WEBHOOK_URL, json=data)
-else:
-    print("Results not sent to Teams")
-
-print("First request complete...")
-
+#send LAG query results
 change_send = input("Send change results to Teams? (y/n): ").strip().lower()
 if change_send == "y":
     data = {"content": change_rows_only}
