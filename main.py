@@ -41,7 +41,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
 def run():
     with sync_playwright() as p:
         #navigate and log in
-        browser = p.chromium.launch(headless=HEADLESS)
+        browser = p.chromium.launch(headless=HEADLESS, ignore_default_args=["--enable-automation"], channel="chrome")
         page = browser.new_page()
         page.goto(BASE_URL)
         page.fill("#username", LOGIN_USER)
