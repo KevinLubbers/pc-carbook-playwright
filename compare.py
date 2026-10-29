@@ -2,7 +2,7 @@ import sqlite3
 import os
 import requests
 import sys
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from dotenv import load_dotenv
 
 #load env variables and connect to DB
@@ -269,7 +269,10 @@ def rows_only(table_text):
                 except:
                     html_string += f"<td>{c}</td>"
             else:
-                html_string += f"<td>{c}</td>"
+                if "Day-over-Day Change" in headers[i] and int(c) > 0 and cells[1] == datetime.today().strftime("%Y-%m-%d"):
+                    html_string += f"<td style='color:green;font-weight:bold;background-color:yellow;'>{c}</td>"
+                else:
+                    html_string += f"<td>{c}</td>"
         html_string += "</tr>"
         html.append(html_string)
 
