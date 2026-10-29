@@ -269,7 +269,7 @@ def rows_only(table_text):
                 except:
                     html_string += f"<td>{c}</td>"
             else:
-                if "Day-over-Day Change" in headers[i] and int(c) > 0 and cells[1] == datetime.today().strftime("%Y-%m-%d"):
+                if "Day-over-Day Change" in headers[i] and (c == "-" or int(c) > 0) and cells[1] == datetime.today().strftime("%Y-%m-%d"):
                     html_string += f"<td style='color:green;font-weight:bold;background-color:yellow;'>{c}</td>"
                 else:
                     html_string += f"<td>{c}</td>"
