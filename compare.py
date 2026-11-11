@@ -144,6 +144,11 @@ WHERE
 
 ORDER BY a.division, a.model, a.style_name
 """
+
+delete_query = """
+    DELETE FROM mdl_dfrt_check
+    WHERE DATE(scrape_date) = ?
+"""
 #creates a nicely formatted table of results with headers and column widths
 def print_sql_table(cursor, max_width=40):
     returnText = []
@@ -342,7 +347,6 @@ lag_query_text = "\n".join(lag_query_text)
 #start compare query and text display table creation
 c.execute(optimized_compare_query, (date1, date2))
 string_output = print_sql_table(c)
-conn.close()
 
 #if no pricing change results, a different message is sent
 if string_output != "":
@@ -368,3 +372,12 @@ if change_send == "y":
     requests.post(CHANGE_QUERY_WEBHOOK_URL, json=data)
 else:
     print("Results not sent to Teams")
+
+#Ask user to delete today's results so main.py can be run again
+delete = input("Delete today's results? (y/n): ").strip().lower()
+if delete == "y":
+    c.execute(delete_query, (date2,))
+    conn.commit()
+else:
+    print("Today's results not deleted")
+conn.close()
