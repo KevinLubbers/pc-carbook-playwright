@@ -149,6 +149,10 @@ delete_query = """
     DELETE FROM mdl_dfrt_check
     WHERE DATE(scrape_date) = ?
 """
+
+most_recent_scrape_date_query = """
+    SELECT MAX(scrape_date) FROM mdl_dfrt_check
+"""
 #creates a nicely formatted table of results with headers and column widths
 def print_sql_table(cursor, max_width=40):
     returnText = []
@@ -296,7 +300,8 @@ while True:
     today = date.today()
     match choice:
         case "1":
-            yesterday = today - timedelta(days=1)
+            #yesterday = today - timedelta(days=1)
+            yesterday = c.execute(most_recent_scrape_date_query).fetchone()[0]
             date1 = yesterday.strftime("%Y-%m-%d")
             date2 = today.strftime("%Y-%m-%d")
             break
