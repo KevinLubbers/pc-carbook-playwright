@@ -153,6 +153,34 @@ delete_query = """
 most_recent_scrape_date_query = """
     SELECT MAX(scrape_date) FROM mdl_dfrt_check
 """
+
+when_model_added_query = """
+WITH daily_models AS (
+    SELECT DISTINCT
+        division,
+        DATE(scrape_date) AS scrape_day,
+        model_year || '-' || model_code || ': ' || model || ' ' || style_name AS complete_model_string
+    FROM mdl_dfrt_check
+),
+models_with_first_seen AS (
+    SELECT
+        division,
+        scrape_day,
+        complete_model_string,
+        ROW_NUMBER() OVER (
+            PARTITION BY division, complete_model_string 
+            ORDER BY scrape_day
+        ) AS appearance_number
+    FROM daily_models
+)
+SELECT
+    division,
+    scrape_day AS "First Seen",
+    complete_model_string AS "New Model"
+FROM models_with_first_seen
+WHERE appearance_number = 1
+ORDER BY division, scrape_day, complete_model_string;
+"""
 #creates a nicely formatted table of results with headers and column widths
 def print_sql_table(cursor, max_width=40):
     returnText = []
@@ -302,7 +330,7 @@ while True:
         case "1":
             #yesterday = today - timedelta(days=1)
             yesterday = c.execute(most_recent_scrape_date_query).fetchone()[0]
-            date1 = yesterday.strftime("%Y-%m-%d")
+            date1 = yesterday
             date2 = today.strftime("%Y-%m-%d")
             break
         case "2":
@@ -348,6 +376,17 @@ for row in rows:
     lag_query_text.append(f"{division:<12} | {scrape_day:<12} | {model_count:<12} | {day_diff_display:<20}")
 
 lag_query_text = "\n".join(lag_query_text)
+
+#display new models
+c.execute(when_model_added_query)
+rows = c.fetchall()
+for row in rows:
+    division = row[0]
+    first_seen = row[1]
+    new_model = row[2]
+
+    print(f"{division} | {first_seen} | {new_model}")
+
 
 #start compare query and text display table creation
 c.execute(optimized_compare_query, (date1, date2))
