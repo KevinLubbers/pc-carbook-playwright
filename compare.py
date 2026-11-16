@@ -159,27 +159,37 @@ WITH daily_models AS (
     SELECT DISTINCT
         division,
         DATE(scrape_date) AS scrape_day,
-        model_year || '-' || model_code || ': ' || model || ' ' || style_name AS complete_model_string
+        model_year,
+        model_code,
+        model,
+        style_name
     FROM mdl_dfrt_check
 ),
-models_with_first_seen AS (
+first_seen AS (
     SELECT
         division,
-        scrape_day,
-        complete_model_string,
-        ROW_NUMBER() OVER (
-            PARTITION BY division, complete_model_string 
-            ORDER BY scrape_day
-        ) AS appearance_number
+        model_year,
+        model_code,
+        model,
+        style_name,
+        MIN(scrape_day) AS date_added
     FROM daily_models
+    GROUP BY
+        division,
+        model_year,
+        model_code,
+        model,
+        style_name
 )
 SELECT
     division,
-    scrape_day AS "First Seen",
-    complete_model_string AS "New Model"
-FROM models_with_first_seen
-WHERE appearance_number = 1
-ORDER BY division, scrape_day, complete_model_string;
+    date_added AS "Date Added",
+    model_year,
+    model_code,
+    model,
+    style_name
+FROM first_seen
+ORDER BY date_added ASC, division;
 """
 #creates a nicely formatted table of results with headers and column widths
 def print_sql_table(cursor, max_width=40):
@@ -383,7 +393,7 @@ rows = c.fetchall()
 for row in rows:
     division = row[0]
     first_seen = row[1]
-    new_model = row[2]
+    new_model = f"{row[2]} - {row[3]}: {row[4]} {row[5]}"
 
     print(f"{division} | {first_seen} | {new_model}")
 
