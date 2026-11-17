@@ -189,6 +189,7 @@ SELECT
     model,
     style_name
 FROM first_seen
+WHERE date_added >= DATE('now', '-30 days')
 ORDER BY date_added ASC, division;
 """
 #creates a nicely formatted table of results with headers and column widths
@@ -388,14 +389,6 @@ for row in rows:
 lag_query_text = "\n".join(lag_query_text)
 
 #display new models
-c.execute(when_model_added_query)
-rows = c.fetchall()
-for row in rows:
-    division = row[0]
-    first_seen = row[1]
-    new_model = f"{row[2]} - {row[3]}: {row[4]} {row[5]}"
-
-    print(f"{division} | {first_seen} | {new_model}")
 
 
 #start compare query and text display table creation
@@ -434,4 +427,18 @@ if delete == "y":
     conn.commit()
 else:
     print("Today's results not deleted")
+
+#Ask user to see new models
+show = input("Show new models? (y/n): ").strip().lower()
+if show == "y":
+    c.execute(when_model_added_query)
+    rows = c.fetchall()
+    for row in rows:
+        division = row[0]
+        first_seen = row[1]
+        new_model = f"{row[2]} - {row[3]}: {row[4]} {row[5]}"
+
+        print(f"{division} | {first_seen} | {new_model}")
+
+c.close()
 conn.close()
