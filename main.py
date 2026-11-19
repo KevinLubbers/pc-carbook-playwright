@@ -69,14 +69,14 @@ def run():
                 division = page.eval_on_selector('select.component-selector-make-input','select => select.options[select.selectedIndex].textContent')
                 #get text of selected year 
                 year = page.eval_on_selector('select.component-selector-year-input','select => select.options[select.selectedIndex].textContent')
-                time.sleep(1)
+                time.sleep(3)
                 page.wait_for_selector(".component-selector-model-input")
                 #get text of all models (except the first one, which is a placeholder)
                 models = page.eval_on_selector_all(".component-selector-model-input option", "options => options.slice(1).map(option=> option.textContent)")
                 #loop through all models found
                 for model in models:
                     page.select_option('.component-selector-model-input', label=model)
-                    time.sleep(2)
+                    time.sleep(3)
                     #get dynamically generated table data after selecting model
                     table = page.query_selector("table.style-cellTableWidget tbody")
                     rows = table.query_selector_all("tr")
